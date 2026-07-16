@@ -1,0 +1,33 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+*.sln.docstates
+.vs/
+
+## Rider
+.idea/
+*.sln.iml
+
+## VS Code
+.vscode/
+
+## NuGet
+*.nupkg
+
+## Environment
+.env
+*.env.local
+appsettings.*.local.json
+
+## Docker
+*.log
+docker-compose.override.yml
+
+## OS
+.DS_Store
+Thumbs.db
+
+## EF Core migrations backup
+*.efmigrationplan

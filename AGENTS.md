@@ -4,6 +4,25 @@
 
 Pelican Town System — municipal management platform inspired by Stardew Valley. Modular monolith evolving into microservices. C# 13 / .NET 9, ASP.NET Core, PostgreSQL, Redis, RabbitMQ, Clean Architecture + DDD.
 
+## Workflow per phase
+
+**Before implementing any phase**, read the phase's topic list in `ROADMAP.md` and critically review it:
+
+1. **O que falta?** — Existe alguma feature relevante do jogo ou do domínio que o roadmap não listou? Adicione.
+2. **O que pode ser melhorado?** — Os tópicos cobrem bem o conceito que a fase quer ensinar? Existe um edge case ou cenário real que enriquece a implementação?
+3. **Quais padrões se aplicam?** — Essa fase é a oportunidade certa para introduzir um pattern de arquitetura (ex: Strategy, Factory, Observer) ou uma classe do framework .NET (ex: `Channel<T>`, `IHostedService`, `IDistributedCache`)?
+4. **Como isso se conecta ao resto?** — Esse módulo publica ou consome eventos? Precisa de integração com módulos já existentes? Atualize o roadmap com esses eventos se necessário.
+
+**After the review**, update `ROADMAP.md` with any new topics discovered, then implement. The review findings go in the `details/` file as part of "Alternativas consideradas" e "Pontos de atenção".
+
+**Pacing**: a partir da Fase 1, implemente **um tópico por vez**. Após cada tópico:
+1. Mostre o que foi feito (arquivos criados/modificados).
+2. Gere o `.md` correspondente na pasta `details/`.
+3. Marque `[x]` no `ROADMAP.md`.
+4. Pergunte se pode prosseguir para o próximo tópico.
+
+Isso garante que cada conceito seja compreendido antes de avançar.
+
 ## Prerequisites
 
 ```bash
@@ -282,14 +301,14 @@ Every module follows this internal structure:
 
 ### Contract tests
 
-- PactNet (consumer-driven) between extracted microservices after Fase 25.
+- PactNet (consumer-driven) between extracted microservices after Fase 31.
 - Provider verification in CI pipeline.
 
 ### Load tests
 
 - k6 scripts in `tests/load/`.
 - Target: p95 latency < 500ms for read endpoints, < 2s for write endpoints under 200 concurrent users.
-- Run before major milestones (Fase 25, Fase 33).
+- Run before major milestones (Fase 31, Fase 39).
 
 ## Build & CI
 
@@ -329,7 +348,7 @@ docker compose up -d
 # Build and run the monolith locally
 docker compose up --build api
 
-# After microservices extraction (Fase 25), each service has its own Dockerfile
+# After microservices extraction (Fase 31), each service has its own Dockerfile
 docker compose up --build identity-api clinic-api jojamart-api gateway
 ```
 
@@ -342,7 +361,7 @@ docker compose up --build identity-api clinic-api jojamart-api gateway
 
 ## Key architectural decisions (ADRs)
 
-These will be documented in `ARCHITECTURE.md` by Fase 34. Keep them in mind while building:
+These will be documented in `ARCHITECTURE.md` by Fase 40. Keep them in mind while building:
 
 1. **Modular monolith first, microservices later** — domain boundaries validated in-process before network boundaries are introduced.
 2. **Database-per-service (schema-per-module in monolith)** — no shared tables between modules, enforced since Fase 0.
@@ -350,7 +369,7 @@ These will be documented in `ARCHITECTURE.md` by Fase 34. Keep them in mind whil
 4. **Identity extracted first** — authentication is the most coupled dependency; extracting it validates the microservices strategy.
 5. **Event Sourcing only where it makes sense** (Museu) — not all modules need it. Trade-off documented explicitly.
 6. **Multi-tenancy via schema-per-tenant** — isolation at DB level, same code-base serves JojaMart and Pierre.
-7. **Infrastructure as Code from Fase 33** — no ClickOps in Azure. Everything provisioned via Terraform.
+7. **Infrastructure as Code from Fase 39** — no ClickOps in Azure. Everything provisioned via Terraform.
 
 ## Stack summary
 
@@ -370,6 +389,7 @@ These will be documented in `ARCHITECTURE.md` by Fase 34. Keep them in mind whil
 ## Do's
 
 - Reference the ROADMAP.md when implementing features to understand which phase you're in and what comes before/after.
+- **Before implementing a phase, run the review checklist** described in "Workflow per phase" — question the roadmap, find gaps, propose additions.
 - Write tests alongside production code, not after.
 - Use `Result<T>` for all application handler return types.
 - Keep modules isolated — no `using` statement that crosses module boundaries (except Shared Kernel and Contracts).

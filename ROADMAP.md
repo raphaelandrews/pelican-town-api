@@ -15,16 +15,17 @@ O projeto será construído em **duas grandes etapas**:
 
 ## Fase 0 — Fundação e arquitetura
 
-- [ ] Definir bounded contexts de todos os módulos (lista completa na tabela ao final)
+- [x] Definir bounded contexts de todos os módulos (lista completa na tabela ao final)
 - [ ] Modelo de "Cidadão" como identidade compartilhada (shared kernel mínimo)
-- [ ] Estrutura de solution: `src/Modules/<NomeDoModulo>/{Domain,Application,Infrastructure,Api}` + `src/Shared/{Kernel,Contracts}`
+- [x] Estrutura de solution: `src/API/PelicanTown.Api/` (host) + `src/Modules/<NomeDoModulo>/{Domain,Application,Infrastructure,Api}` + `src/Shared/{Kernel,Contracts}`
 - [ ] Um schema PostgreSQL por módulo desde o início
-- [ ] `docker-compose.yml` base: Postgres, RabbitMQ, Redis, Seq (logging estruturado)
-- [ ] Shared Kernel: Value Objects comuns (`Money`, `Address`, `Cpf`, `Phone`), `BaseEntity`, `IDomainEvent`, `Result<T>` / Either para erros de domínio
-- [ ] Configurar Serilog + Seq com correlation-id propagado entre módulos
-- [ ] Swagger/OpenAPI com Bearer configurado globalmente
-- [ ] Planejar estratégia de cloud (Azure) e IaC (Terraform) — define direção desde o início, implementa na Fase 33
-- [ ] Pipeline de CI com GitHub Actions (build + testes no PR)
+- [x] `docker-compose.yml` base: Postgres, RabbitMQ, Redis, Seq, MailHog (email dev)
+- [x] `.gitignore`, `.editorconfig`, `Directory.Build.props` (DRY — versão .NET, nullable, implicit usings)
+- [x] Shared Kernel: Value Objects comuns (`Money`, `Address`, `Cpf`, `Phone`), `BaseEntity` (com `CreatedAt`/`UpdatedAt` para auditoria futura), `IDomainEvent`, `Result<T>`, `Error`, `ErrorType`
+- [x] Configurar Serilog + Seq com correlation-id propagado entre módulos
+- [x] Swagger/OpenAPI configurado (Bearer será detalhado na Fase 1 com Identity)
+- [ ] Planejar estratégia de cloud (Azure) e IaC (Terraform) — define direção desde o início, implementa na Fase 39
+- [x] Pipeline de CI com GitHub Actions (build + testes no PR)
 - [ ] Script `./scripts/scaffold-module.sh` — gera estrutura de 4 projetos (Domain, Application, Infrastructure, Api) com namespaces, DI registration e projeto de testes
 - [ ] Script `./scripts/setup.sh` — sobe containers, roda migrations de todos os módulos, aplica seed data, deixa API pronta em um comando
 - [ ] Sistema de seed data: `app.SeedAsync()` no host que popula cidadãos famosos (Prefeito Lewis, Doutor Harvey, Clint, Robin, Gus, Willy, Mago Rasmodius, Krobus, Marnie, Gunther), suas roles, e dados de demonstração por módulo
@@ -59,7 +60,7 @@ O projeto será construído em **duas grandes etapas**:
 - [ ] Correlation-id propagado via header e incluído em toda resposta/erro
 - [ ] CORS policy unificada
 
-> O API Gateway (YARP) será introduzido na Fase 25 junto com a decomposição em microsserviços. Durante o monólito, não há necessidade de proxy reverso.
+> O API Gateway (YARP) será introduzido na Fase 31 junto com a decomposição em microsserviços. Durante o monólito, não há necessidade de proxy reverso.
 
 ---
 
@@ -101,7 +102,7 @@ Domínio pequeno e isolado, ideal para introduzir **fila de serviço com SLA** s
 
 ## Fase 5 — Carpintaria do Robin
 
-Primeiro módulo desenhado desde o início para depender de **outro módulo** — bom lugar pra introduzir integração síncrona entre módulos (que depois, na Fase 23, vira Saga assíncrona).
+Primeiro módulo desenhado desde o início para depender de **outro módulo** — bom lugar pra introduzir integração síncrona entre módulos (que depois, na Fase 29, vira Saga assíncrona).
 
 ### Tópicos
 - [ ] Cadastro de obras/reformas de edifícios da cidade
@@ -410,12 +411,130 @@ Assim como no jogo, é o módulo que "amarra" os outros — e simbolicamente mar
 
 ---
 
-## Fase 23 — Mensageria e integração entre módulos
+## Fase 23 — Banco
+
+Instituição financeira de Pelican Town. Introduz **domínio financeiro com transações**, concorrência em transferências e integração com a Prefeitura para pagamento de impostos.
+
+### Tópicos
+- [ ] Contas bancárias por cidadão (corrente, poupança) com saldo e extrato
+- [ ] Transações: depósito, saque, transferência entre cidadãos
+- [ ] Concorrência otimista em transferências (saldo não pode ficar negativo)
+- [ ] Empréstimos com análise de crédito — score baseado em histórico de pagamento de impostos na Prefeitura
+- [ ] Integração com Prefeitura: pagamento de impostos via débito automático
+- [ ] Integração com JojaMart/Pierre e Saloon: pagamento via conta bancária
+- [ ] Extrato mensal em PDF (QuestPDF)
+- [ ] Papéis: Gerente, Cliente
+- [ ] Eventos: `TransferenciaRealizada`, `EmprestimoAprovado`, `ImpostoPago`
+- [ ] Testes unitários + integração (cenários de concorrência em transferências simultâneas)
+
+### Projeto prático
+**`pts-banco`** — contas, transações, empréstimos e pagamento de impostos.
+
+---
+
+## Fase 24 — Transporte Público / Minecart
+
+Sistema de transporte municipal. Introduz **rotas, horários e bilhetagem** — padrão de scheduling com capacidade por veículo.
+
+### Tópicos
+- [ ] Linhas de transporte: rotas entre estações (Fazenda → Centro → Praia → Montanha → Deserto)
+- [ ] Horários fixos com frequência por rota e por dia da semana
+- [ ] Bilhetagem: passagem unitária, cartão mensal, passe livre para funcionários públicos
+- [ ] Capacidade por veículo (lotação máxima — similar ao controle de capacidade do Spa)
+- [ ] Integração com Ilha Gengibre: ferry tratado como "rota especial" com mesmo modelo
+- [ ] Papéis: Motorista, Passageiro
+- [ ] Eventos: `PassagemComprada`, `LinhaLotada`, `NovaRotaCriada`
+- [ ] Testes unitários + integração
+
+### Projeto prático
+**`pts-minecart`** — rotas, horários, bilhetagem e controle de lotação.
+
+---
+
+## Fase 25 — Eleições
+
+Sistema eleitoral municipal. Introduz **votação digital com apuração automática** — domínio temporal com segurança de voto.
+
+### Tópicos
+- [ ] Candidatos: cidadãos que se registram como candidatos a cargos (Prefeito, Vereador)
+- [ ] Período eleitoral com data de início, fim e campanha
+- [ ] Votação: cada cidadão vota uma vez por cargo, voto secreto (hash + salt, não armazena voto em plaintext)
+- [ ] Apuração automática disparada ao fim do período eleitoral (Quartz job)
+- [ ] Posse: vencedor assume papel com data de início e fim de mandato
+- [ ] Histórico de eleições, candidatos e resultados por ano
+- [ ] Regras: não pode ser candidato e eleitor no mesmo cargo, não pode votar mais de uma vez
+- [ ] Papéis: Candidato, Eleitor
+- [ ] Eventos: `EleicaoIniciada`, `VotoRegistrado`, `EleicaoEncerrada`, `PrefeitoEleito`
+- [ ] Testes unitários + integração (segurança do voto, impede voto duplo, apuração correta)
+
+### Projeto prático
+**`pts-eleicoes`** — candidatura, votação secreta, apuração e posse.
+
+---
+
+## Fase 26 — Clima/Tempo (Weather Service)
+
+Serviço de previsão meteorológica. Introduz **integração com API externa, cache de respostas e jobs de atualização periódica** — sem UI de gestão, puramente automatizado.
+
+### Tópicos
+- [ ] Integração com Open-Meteo (API gratuita, sem key — https://open-meteo.com)
+- [ ] Previsão para Pelican Town: temperatura, precipitação, vento, umidade, estação do ano
+- [ ] Cache de previsões em Redis com TTL de 3h (respeita rate limit da API)
+- [ ] Quartz job: atualiza previsão a cada 3h para a semana corrente
+- [ ] Eventos: `ChuvaPrevista` (Fazenda ajusta irrigação), `TempestadePrevista` (Segurança Pública em alerta), `VeraoChegou` / `InvernoChegou` (eventos sazonais da cidade, Feira Noturna)
+- [ ] Histórico de clima: previsão vs dados reais (mockados localmente) para comparação
+- [ ] Papéis: — (serviço automatizado, sem CRUD de gestão)
+- [ ] Testes unitários (mock da API externa com WireMock) + integração
+
+### Projeto prático
+**`pts-clima`** — previsão do tempo, eventos climáticos e integração com API externa gratuita.
+
+---
+
+## Fase 27 — Feira Noturna (Night Market)
+
+Evento sazonal de comércio. Introduz **comerciantes temporários com catálogo rotativo e evento temático ativado por Feature Flag** — padrão de conteúdo sazonal.
+
+### Tópicos
+- [ ] Evento sazonal (Inverno, dias 15-17) ativado/desativado por Feature Flag `NightMarketEnabled`
+- [ ] Comerciantes temporários: catálogo rotativo de itens exclusivos (não disponíveis em JojaMart/Pierre/Peixaria)
+- [ ] Pesca submarina: atividade exclusiva com tabela de espécies raras (drop table)
+- [ ] Decoração temática e bônus por participação
+- [ ] Inscrição de comerciantes: cidadãos com papel Comerciante podem se registrar para vender na feira
+- [ ] Eventos: `FeiraNoturnaAberta`, `PeixeSubmarinoCapturado` (Museu consome), `ItemExclusivoVendido`
+- [ ] Papéis: Comerciante temporário, Visitante
+- [ ] Testes unitários + integração
+
+### Projeto prático
+**`pts-feira-noturna`** — evento sazonal, comerciantes temporários, pesca submarina.
+
+---
+
+## Fase 28 — Deserto de Calico (Calico Desert)
+
+Expansão exótica da cidade. Introduz **acesso condicional via transporte, comércio exótico e mineração de alto risco** conectada à Guilda.
+
+### Tópicos
+- [ ] Acesso via Transporte Público (rota especial de ônibus para o deserto — Fase 24)
+- [ ] Comerciantes exóticos: itens que não existem em Pelican Town (sementes do deserto, artefatos antigos)
+- [ ] Skull Cavern: mineração com drops raros e tabela de loot por profundidade
+- [ ] Integração com Guilda dos Aventureiros: bounties automáticas de exploração da Skull Cavern
+- [ ] Clube do Deserto: área social exclusiva com acesso por convite
+- [ ] Eventos: `DesertoExplorado`, `ArtefatoDesertoDescoberto` (Museu consome), `BountyDesertoGerado` (Guilda consome)
+- [ ] Papéis: Comerciante do deserto, Explorador, Membro do clube
+- [ ] Testes unitários + integração
+
+### Projeto prático
+**`pts-deserto-calico`** — comércio exótico, mineração e integração com Guilda e Museu.
+
+---
+
+## Fase 29 — Mensageria e integração entre módulos
 
 Com todos os módulos existindo, formalizar a comunicação assíncrona.
 
 ### Tópicos
-- [ ] RabbitMQ + MassTransit (local/dev) — com abstração para trocar por Azure Service Bus em produção (Fase 33)
+- [ ] RabbitMQ + MassTransit (local/dev) — com abstração para trocar por Azure Service Bus em produção (Fase 39)
 - [ ] Outbox Pattern para consistência entre DB e mensageria
 - [ ] Eventos de integração por módulo (`CidadaoRegistrado`, `ConsultaAgendada`, `VendaRealizada`, `OcorrenciaAberta`, `ColheitaDisponivel`, `PeixeRaroCapturado`, `BountyCompleto`, `HospedeCheckIn`, etc.)
 - [ ] Contratos de mensagens versionados (projeto compartilhado no Shared Kernel)
@@ -432,7 +551,7 @@ Com todos os módulos existindo, formalizar a comunicação assíncrona.
 
 ---
 
-## Fase 24 — Reporting & Read Models (CQRS Read Side)
+## Fase 30 — Reporting & Read Models (CQRS Read Side)
 
 Consolida dados de todos os módulos para dashboards e relatórios municipais.
 
@@ -451,7 +570,7 @@ Consolida dados de todos os módulos para dashboards e relatórios municipais.
 
 ---
 
-## Fase 25 — Decomposição em microsserviços
+## Fase 31 — Decomposição em microsserviços
 
 - [ ] API Gateway (YARP) com rate limiting por rota e por serviço downstream
 - [ ] Extrair `pts-identity` como serviço independente (todo mundo depende dele)
@@ -469,7 +588,7 @@ Arquitetura final com Identity + 2-3 serviços de domínio extraídos — o rest
 
 ---
 
-## Fase 26 — SignalR & Tempo Real
+## Fase 32 — SignalR & Tempo Real
 
 Tornar a plataforma viva com atualizações em tempo real via WebSocket.
 
@@ -488,7 +607,7 @@ Hubs de SignalR nos módulos **Guilda**, **Saloon** e **Segurança Pública**. B
 
 ---
 
-## Fase 27 — Multi-tenancy & Loja do Pierre
+## Fase 33 — Multi-tenancy & Loja do Pierre
 
 Trazer a Loja do Pierre das "expansões futuras" para o roadmap principal, demonstrando multi-tenancy com o mesmo código-base da JojaMart.
 
@@ -507,7 +626,7 @@ Trazer a Loja do Pierre das "expansões futuras" para o roadmap principal, demon
 
 ---
 
-## Fase 28 — Event Sourcing no Museu
+## Fase 34 — Event Sourcing no Museu
 
 Transformar o "event sourcing simples" do Museu em Event Sourcing completo com Event Store e projeções rebuildáveis.
 
@@ -526,7 +645,7 @@ Refatoração do **`pts-museu-gunther`** — Event Store real, snapshots e proje
 
 ---
 
-## Fase 29 — LGPD, Auditoria & Soft Delete (transversal)
+## Fase 35 — LGPD, Auditoria & Soft Delete (transversal)
 
 Conformidade com a legislação brasileira e trilha de auditoria completa em todos os módulos.
 
@@ -546,7 +665,7 @@ Biblioteca compartilhada `BuildingBlocks/Auditability` + endpoints de LGPD no Id
 
 ---
 
-## Fase 30 — Feature Flags & Distributed Locking
+## Fase 36 — Feature Flags & Distributed Locking
 
 ### Feature Flags
 - [ ] `Microsoft.FeatureManagement` — habilitação/desabilitação de features em runtime sem redeploy
@@ -568,7 +687,7 @@ Biblioteca compartilhada `BuildingBlocks/Auditability` + endpoints de LGPD no Id
 
 ---
 
-## Fase 31 — Segurança, resiliência e observabilidade
+## Fase 37 — Segurança, resiliência e observabilidade
 
 - [ ] OWASP Top 10 por serviço exposto (auditoria completa)
 - [ ] Circuit Breaker e Retry com Polly (exponential backoff, timeout, bulkhead) entre microsserviços
@@ -582,7 +701,7 @@ Biblioteca compartilhada `BuildingBlocks/Auditability` + endpoints de LGPD no Id
 
 ---
 
-## Fase 32 — Performance
+## Fase 38 — Performance
 
 - [ ] Profiling dos endpoints mais usados (`dotnet-trace`, `dotnet-counters`)
 - [ ] Otimização de queries EF Core nos módulos de maior volume (JojaMart, Clínica, Hotel): AsNoTracking, SplitQuery, índices cobrindo queries reais
@@ -595,7 +714,7 @@ Biblioteca compartilhada `BuildingBlocks/Auditability` + endpoints de LGPD no Id
 
 ---
 
-## Fase 33 — Azure Cloud & Infraestrutura como Código
+## Fase 39 — Azure Cloud & Infraestrutura como Código
 
 Tirar o projeto do Docker local e colocar na nuvem com deploy profissional.
 
@@ -617,14 +736,14 @@ Diretório `infra/` com Terraform modules e GitHub Actions workflow de deploy pa
 
 ### Estratégia de deploy para portfólio
 
-O projeto completo (24 módulos) **não** sobe como 24 microsserviços independentes. O deploy de staging consolida assim:
+O projeto completo (30 módulos) **não** sobe como 30 microsserviços independentes. O deploy de staging consolida assim:
 
 | Serviço | Container | Motivo |
 |---|---|---|
 | Gateway (YARP) | 1 container | Roteamento |
-| Identity API | 1 container | Foi extraído na Fase 25 |
-| Clínica + JojaMart/Pierre | 2 containers | Extraídos na Fase 25, multi-tenant ativo |
-| **Monólito modular** (20 módulos restantes) | 1 container | Processo único |
+| Identity API | 1 container | Foi extraído na Fase 31 |
+| Clínica + JojaMart/Pierre | 2 containers | Extraídos na Fase 31, multi-tenant ativo |
+| **Monólito modular** (26 módulos restantes) | 1 container | Processo único |
 
 **Total: 5 containers + infra gerenciada**
 
@@ -648,7 +767,7 @@ Cold start do fly.io (containers hibernam após ~30 min de inatividade) é mitig
 
 ---
 
-## Fase 34 — CI/CD, deploy e documentação
+## Fase 40 — CI/CD, deploy e documentação
 
 - [ ] Dockerfile por serviço (multi-stage, distroless, non-root user)
 - [ ] `docker-compose.yml` completo com todos os serviços + infra para desenvolvimento local
@@ -666,21 +785,21 @@ Cold start do fly.io (containers hibernam após ~30 min de inatividade) é mitig
   - Por que Identity extraído primeiro
 - [ ] Diagrama de arquitetura C4 (System Context, Container, Component)
 - [ ] Postman collection com todos os endpoints, organizada por módulo
-- [ ] README.md completo: visão do produto, mapa dos 24 módulos, stack tecnológica, como rodar local e na cloud
+- [ ] README.md completo: visão do produto, mapa dos 30 módulos, stack tecnológica, como rodar local e na cloud
 
 ---
 
 ## Visão geral dos módulos/serviços
 
 | # | Módulo | Nome real em Stardew Valley? | Fase | Papéis principais | Vira microsserviço? | Conceito novo introduzido |
-|---|---|---|---|---|---|---|
-| 1 | Identity (Cidadãos + RBAC) | — (conceito transversal) | 1 | base de todos | Sim (Fase 25) | Auth, JWT, RBAC |
+|---|---|---|---|---|---|---|---|
+| 1 | Identity (Cidadãos + RBAC) | — (conceito transversal) | 1 | base de todos | Sim (Fase 31) | Auth, JWT, RBAC |
 | 2 | Prefeitura | **Town Hall** ✅ | 3 | Prefeito Lewis | Não | Workflow de aprovação, impostos |
 | 3 | Ferraria do Clint | **Blacksmith's** ✅ | 4 | Ferreiro | Não | Fila de serviço com SLA, Quartz.NET |
 | 4 | Carpintaria do Robin | **Carpenter's Shop** ✅ | 5 | Carpinteiro | Não | Integração síncrona entre módulos |
-| 5 | Clínica do Doutor Harvey | **Harvey's Clinic** ✅ | 6 | Médico, Recepcionista, Paciente | Sim (Fase 25) | Concorrência otimista, regras de acesso granulares |
+| 5 | Clínica do Doutor Harvey | **Harvey's Clinic** ✅ | 6 | Médico, Recepcionista, Paciente | Sim (Fase 31) | Concorrência otimista, regras de acesso granulares |
 | 6 | Rancho da Marnie | **Marnie's Ranch** ✅ | 7 | Fazendeiro, Veterinário | Não | Reuso de padrão (agendamento), sem acoplar código |
-| 7 | JojaMart | **JojaMart** ✅ | 8 | Caixa, Gerente | Sim (Fase 25) | Estoque com concorrência, PDV, Redis |
+| 7 | JojaMart | **JojaMart** ✅ | 8 | Caixa, Gerente | Sim (Fase 31) | Estoque com concorrência, PDV, Redis |
 | 8 | Escola | Schoolhouse (estrutura real) ⚠️ | 9 | Professor, Responsável | Não | Regras de domínio educacional, PDF |
 | 9 | Peixaria do Willy | **Fish Shop** ✅ | 10 | Vendedor, Fornecedor | Não | Preços sazonais, eventos para consumo |
 | 10 | Stardrop Saloon (Gus) | **The Stardrop Saloon** ✅ | 11 | Garçom, Cozinheiro, Cliente | Não | Comandas, fluxo de cozinha, evento semanal |
@@ -691,13 +810,19 @@ Cold start do fly.io (containers hibernam após ~30 min de inatividade) é mitig
 | 15 | Fazenda | **Farm** ✅ | 16 | Fazendeiro | Não | Domínio temporal (estações), tipos de fazenda |
 | 16 | Torre do Mago Rasmodius | **Wizard's Tower** ✅ | 17 | Mago, Cliente | Não | Rede de teleporte (grafo), quests mágicas |
 | 17 | Hotel | — (construção nova) 🆕 | 18 | Hóspede, Recepcionista, Camareiro | Não | Reserva com check-in/out, ciclo de estadia |
-| 18 | Museu do Gunther | **Museum** ✅ | 19 | Curador, Cidadão doador | Não | Módulo puramente reativo, event sourcing (Fase 28) |
+| 18 | Museu do Gunther | **Museum** ✅ | 19 | Curador, Cidadão doador | Não | Módulo puramente reativo, event sourcing (Fase 34) |
 | 19 | Cinema | **Movie Theater** ✅ | 20 | Espectador, Projecionista | Não | Sessões com lugares marcados |
 | 20 | Ilha Gengibre | **Ginger Island** ✅ | 21 | Turista, Guia | Não | Pacotes de viagem, ferry agendado |
 | 21 | Centro Comunitário | **Community Center** ✅ | 22 | Organizador, Cidadão | Não | Bundles/metas coletivas, agregador de eventos |
-| 22 | Loja do Pierre | **Pierre's General Store** ✅ | 27 | Caixa, Gerente | Não | Multi-tenancy com mesmo código da JojaMart |
-| 23 | Correios (Mail) | Mail system ⚠️ | 23 | — (transversal) | Não | Consumidor genérico, templates, preferências |
-| 24 | Reporting | — (transversal) | 24 | — (transversal) | Não | Read models via CQRS, Dapper, exportação |
+| 22 | Banco | — (construção nova) 🆕 | 23 | Gerente, Cliente | Não | Domínio financeiro, transações, empréstimos |
+| 23 | Transporte Público | Minecart system ✅ | 24 | Motorista, Passageiro | Não | Rotas, horários, bilhetagem |
+| 24 | Eleições | — (construção nova) 🆕 | 25 | Candidato, Eleitor | Não | Votação secreta, apuração automática |
+| 25 | Clima/Tempo | — (serviço técnico) | 26 | — (automatizado) | Não | Integração API externa, eventos climáticos |
+| 26 | Feira Noturna | **Night Market** ✅ | 27 | Comerciante temporário, Visitante | Não | Evento sazonal, catálogo rotativo |
+| 27 | Deserto de Calico | **Calico Desert** ✅ | 28 | Comerciante exótico, Explorador | Não | Acesso condicional, mineração, loot table |
+| 28 | Loja do Pierre | **Pierre's General Store** ✅ | 33 | Caixa, Gerente | Não | Multi-tenancy com mesmo código da JojaMart |
+| 29 | Correios (Mail) | Mail system ⚠️ | 29 | — (transversal) | Não | Consumidor genérico, templates, preferências |
+| 30 | Reporting | — (transversal) | 30 | — (transversal) | Não | Read models via CQRS, Dapper, exportação |
 
 ---
 
@@ -755,27 +880,34 @@ Cold start do fly.io (containers hibernam após ~30 min de inatividade) é mitig
 11. **Hotel** combina padrões já conhecidos (reserva como Clínica, capacidade como Spa, faturamento como JojaMart) em um domínio novo e rico.
 12. **Museu** é o primeiro módulo puramente reativo — consome eventos dos anteriores sem nunca ser chamado diretamente.
 13. **Cinema** e **Ilha Gengibre** estendem a cidade com padrões complementares (lugares marcados, pacotes de viagem).
-14. **Centro Comunitário** fecha os módulos de domínio como o grande agregador de eventos — simbolicamente a "conclusão" do jogo.
-15. **Mensageria formalizada (Fase 23) só depois que todos os módulos existem** — os eventos de integração são desenhados sobre um domínio já validado, incluindo o Correios como consumidor genérico.
-16. **Reporting (Fase 24)** com os dados de todos os módulos fluindo via eventos — projeções CQRS com dados reais.
-17. **Microsserviços (Fase 25)** — extração consciente e defensável, não big-bang. Apenas 3 serviços saem do monólito. Webhooks + Pact entram aqui.
-18. **SignalR (Fase 26) depois dos microsserviços** — WebSocket com backplane Redis só faz sentido quando há serviços independentes que precisam de estado compartilhado em tempo real.
-19. **Multi-tenancy (Fase 27)** aplicada sobre um serviço já extraído (JojaMart) para demonstrar que o design de microsserviços isolados facilita multi-tenancy.
-20. **Event Sourcing (Fase 28)** como refatoração do Museu — mostra evolução de arquitetura em um módulo existente, não greenfield.
-21. **LGPD e Auditoria (Fase 29)** aplicados transversalmente — faz mais sentido quando todos os módulos já existem e produzem dados auditáveis.
-22. **Feature Flags e Distributed Locking (Fase 30)** como última camada de infraestrutura antes de produção.
-23. **Segurança e Observabilidade (Fase 31)** com toda a plataforma rodando — métricas e tracing fazem sentido com tráfego real.
-24. **Performance (Fase 32)** — otimizar o que já funciona, com benchmarks de antes/depois. Hangfire dashboard aqui.
-25. **Azure Cloud e IaC (Fase 33)** — último passo técnico: subir na nuvem com deploy profissional.
-26. **CI/CD e Documentação (Fase 34)** — empacotar, documentar e publicar.
+14. **Centro Comunitário** fecha o primeiro arco de módulos — o grande agregador que depende de mensageria de todos os anteriores.
+15. **Banco** introduz domínio financeiro — transações, empréstimos e integração com Prefeitura para pagamento de impostos. Natural depois que JojaMart e Prefeitura existem.
+16. **Transporte Público** conecta geograficamente os módulos — rotas entre Fazenda, Centro, Praia, Deserto. Depende de nada mas é consumido por Deserto de Calico.
+17. **Eleições** mexe com RBAC dinâmico (cargos eletivos) — só faz sentido quando a cidade tem estrutura política com Prefeitura e cidadãos ativos.
+18. **Clima/Tempo** é o primeiro serviço puramente automatizado com API externa — não tem UI de gestão, só produz eventos climáticos que outros módulos consomem.
+19. **Feira Noturna** introduz conteúdo sazonal com Feature Flag — depende do conceito de evento temporal (Clima), comércio (JojaMart) e catálogo rotativo. Feature flag aqui conecta com a Fase 36.
+20. **Deserto de Calico** é a expansão de alto nível — acesso condicional via Transporte Público, mineração integrada com Guilda, drops para Museu. Depende de múltiplos módulos anteriores, fecha o arco de expansões.
+21. **Mensageria formalizada (Fase 29) só depois que todos os módulos existem** — os eventos de integração são desenhados sobre um domínio já validado, incluindo o Correios como consumidor genérico.
+22. **Reporting (Fase 30)** com os dados de todos os módulos fluindo via eventos — projeções CQRS com dados reais.
+23. **Microsserviços (Fase 31)** — extração consciente e defensável, não big-bang. Apenas 3 serviços saem do monólito. Webhooks + Pact entram aqui.
+24. **SignalR (Fase 32) depois dos microsserviços** — WebSocket com backplane Redis só faz sentido quando há serviços independentes que precisam de estado compartilhado em tempo real.
+25. **Multi-tenancy (Fase 33)** aplicada sobre um serviço já extraído (JojaMart) para demonstrar que o design de microsserviços isolados facilita multi-tenancy.
+26. **Event Sourcing (Fase 34)** como refatoração do Museu — mostra evolução de arquitetura em um módulo existente, não greenfield.
+27. **LGPD e Auditoria (Fase 35)** aplicados transversalmente — faz mais sentido quando todos os módulos já existem e produzem dados auditáveis.
+28. **Feature Flags e Distributed Locking (Fase 36)** como última camada de infraestrutura antes de produção.
+29. **Segurança e Observabilidade (Fase 37)** com toda a plataforma rodando — métricas e tracing fazem sentido com tráfego real.
+30. **Performance (Fase 38)** — otimizar o que já funciona, com benchmarks de antes/depois. Hangfire dashboard aqui.
+31. **Azure Cloud e IaC (Fase 39)** — último passo técnico: subir na nuvem com deploy profissional.
+32. **CI/CD e Documentação (Fase 40)** — empacotar, documentar e publicar.
 
 ---
 
 ## Possíveis expansões futuras
 
-- [ ] **Banco** — contas, transações, empréstimos, integração com Prefeitura para pagamento de impostos
-- [ ] **Transporte público** — linhas, horários, bilhetagem (Minecart como metáfora)
-- [ ] **Eleições** — candidatos, votação, apuração
-- [ ] **Clima/Tempo** — integração com API externa, previsão para fazendeiros e pescadores
-- [ ] **Feira Noturna (Night Market)** — evento sazonal com comerciantes temporários, pesca submarina
-- [ ] **Deserto de Calico** — comerciantes exóticos, mineração, clube do deserto (expansão de alto nível)
+O roadmap principal já cobre 30 módulos. Estas são ideias para depois da Fase 40, se quiser continuar expandindo:
+
+- [ ] **Loja de Móveis do Carpinteiro** — venda de móveis e decoração, integração com Carpintaria
+- [ ] **Correios físico** — agência postal com rastreamento de encomendas entre cidadãos
+- [ ] **Sistema de Conquistas (Achievements)** — gamificação cross-module (ex: "Visitou todos os módulos", "Gastou 100k na JojaMart")
+- [ ] **Estufa Comunitária** — cultivo colaborativo com metas da Fazenda + Centro Comunitário
+- [ ] **Mercado Noturno da Ilha** — extensão da Feira Noturna para a Ilha Gengibre
